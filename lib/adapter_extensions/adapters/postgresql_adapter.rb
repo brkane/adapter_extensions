@@ -98,4 +98,39 @@ protected
       io.close
     end
   end
+
+  def do_bulk_export(file, table_name, options={})
+      query = build_copy_to_command(table_name, options, 'STDOUT')
+      write_data_to_file(file, @connection, query)
+  end
+
+  def build_copy_to_command(table_name, options, dest)
+    q = "COPY #{table_name} "
+    q << "(#{options[:columns].join(',')}) " if options[:columns]
+    q << "TO #{dest} "
+    if options[:fields]
+      q << "WITH "
+      q << "DELIMITER '#{options[:fields][:delimited_by]}' " if options[:fields][:delimited_by]
+      q << "NULL '#{options[:fields][:null_string]}'" if options[:fields][:null_string]
+      if options[:fields][:enclosed_by] || options[:ignore] && options[:ignore] > 0
+        q << "CSV "
+        q << "HEADER " if options[:ignore] && options[:ignore] > 0
+        q << "QUOTE '#{options[:fields][:enclosed_by]}' " if options[:fields][:enclosed_by]
+      end
+    end
+    q
+  end
+
+  def write_data_to_file(file, conn, query)
+
+    buf = ''
+    conn.transaction do
+      conn.exec(query)
+      File.open(file, 'a') do |f|
+        f.puts(buf) while buf = conn.get_copy_data
+      end
+    end
+
+    conn.finish
+  end
 end

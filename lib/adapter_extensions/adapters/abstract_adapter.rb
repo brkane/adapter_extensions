@@ -34,6 +34,11 @@ module AdapterExtensions::AbstractAdapter
     raise NotImplementedError, "add_select_into_table is an abstract method"
   end
   
+  def bulk_export(file, table_name, options={})
+    raise ArgumentError, "#{table_name} does not exist" unless tables.include?(table_name)
+    do_bulk_export(file, table_name, options)
+  end
+  
 protected
   
   # for subclasses to implement
